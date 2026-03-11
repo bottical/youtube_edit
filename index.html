@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube動画編集指示ツール</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YouTube動画編集指示ツール</h1>
+            <p class="subtitle">動画を停止した位置に対して編集指示を記録できます。</p>
+        </header>
+
+        <main>
+            <!-- A. 動画読込セクション -->
+            <section class="card" id="url-section">
+                <h2>動画の読み込み</h2>
+                <div class="input-group">
+                    <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..." aria-label="YouTube URL">
+                    <button id="load-video-btn" class="btn btn-primary">読み込む</button>
+                </div>
+                <div id="url-error" class="error-msg hidden"></div>
+            </section>
+
+            <!-- B. カテゴリ設定セクション -->
+            <section class="card" id="category-section">
+                <h2>カテゴリ設定</h2>
+                <div class="input-group">
+                    <input type="text" id="category-tags" placeholder="カット,テロップ,BGM,SE..." aria-label="カテゴリ候補">
+                    <button id="update-categories-btn" class="btn">カテゴリ更新</button>
+                </div>
+                <p class="info-text">カンマ区切りで入力してください。</p>
+            </section>
+
+            <div class="player-editor-grid">
+                <!-- C. プレイヤーセクション -->
+                <section class="card" id="player-section">
+                    <h2>プレイヤー</h2>
+                    <div id="player-container">
+                        <div id="player-placeholder">
+                            <p>動画を読み込むとここに表示されます</p>
+                        </div>
+                        <div id="player"></div>
+                    </div>
+                    <div class="current-time-display">
+                        停止位置: <span id="display-time-text">00:00:00</span> (<span id="display-time-sec">0</span>s)
+                    </div>
+                </section>
+
+                <!-- D. 指示入力セクション -->
+                <section class="card" id="editor-section">
+                    <h2>指示入力</h2>
+                    <form id="note-form">
+                        <div class="form-group">
+                            <label for="input-time">時間 (hh:mm:ss)</label>
+                            <input type="text" id="input-time" placeholder="00:00:00" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="category1">カテゴリ1</label>
+                                <select id="category1"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="category2">カテゴリ2</label>
+                                <select id="category2"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="category3">カテゴリ3</label>
+                                <select id="category3"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-comment">コメント (Enterで追加 / Shift+Enterで改行)</label>
+                            <textarea id="input-comment" rows="3" placeholder="編集内容を入力してください"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit" id="add-note-btn" class="btn btn-primary">追加</button>
+                            <button type="button" id="clear-input-btn" class="btn btn-secondary">入力クリア</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+
+            <!-- E. 指示一覧セクション -->
+            <section class="card" id="list-section">
+                <div class="section-header">
+                    <h2>指示一覧</h2>
+                    <div class="csv-actions">
+                        <button id="export-csv-btn" class="btn btn-outline">CSVダウンロード</button>
+                        <label for="import-csv-input" class="btn btn-outline">
+                            CSV読み込み
+                            <input type="file" id="import-csv-input" accept=".csv" hidden>
+                        </label>
+                        <button id="delete-all-btn" class="btn btn-danger">全削除</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="notes-table">
+                        <thead>
+                            <tr>
+                                <th class="col-no">No</th>
+                                <th class="col-time">時間</th>
+                                <th class="col-cat">カテゴリ1</th>
+                                <th class="col-cat">カテゴリ2</th>
+                                <th class="col-cat">カテゴリ3</th>
+                                <th class="col-comment">コメント</th>
+                                <th class="col-action">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notes-list">
+                            <!-- JSで生成 -->
+                        </tbody>
+                    </table>
+                    <div id="empty-message" class="info-msg">
+                        指示はまだ登録されていません。
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 YouTube動画編集指示ツール Special Utility</p>
+        </footer>
+    </div>
+
+    <!-- YouTube IFrame Player API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="app.js"></script>
+</body>
+</html>
