@@ -442,6 +442,21 @@ function importCsv(file) {
             });
 
             notes = importedNotes;
+
+            // UX改善: インポートしたデータの動画に切り替える
+            if (notes.length > 0) {
+                const firstNote = notes[0];
+                if (firstNote.videoUrl) {
+                    dom.urlInput.value = firstNote.videoUrl;
+                    loadVideo(); // これにより currentVideoId も更新され描画も走る
+                } else if (firstNote.videoId) {
+                    // URLがないがIDがある場合
+                    currentVideoId = firstNote.videoId;
+                    dom.urlInput.value = `https://www.youtube.com/watch?v=${firstNote.videoId}`;
+                    loadVideo();
+                }
+            }
+
             saveState();
             renderNotesTable();
             showMessage(`${notes.length}件の指示を読み込みました`, 'success');
@@ -562,14 +577,28 @@ function saveState() {
 
 function loadState() {
     try {
+        // URL
         dom.urlInput.value = localStorage.getItem(STORAGE_KEYS.videoUrl) || '';
 
+        // Categories
         const savedCats = localStorage.getItem(STORAGE_KEYS.categories);
-        categories = savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES.split(',');
+        if (savedCats) {
+            const parsed = JSON.parse(savedCats);
+            categories = Array.isArray(parsed) ? parsed : DEFAULT_CATEGORIES.split(',');
+        } else {
+            categories = DEFAULT_CATEGORIES.split(',');
+        }
         dom.categoryInput.value = categories.join(',');
 
+        // Notes
         const savedNotes = localStorage.getItem(STORAGE_KEYS.notes);
-        notes = (savedNotes && Array.isArray(JSON.parse(savedNotes))) ? JSON.parse(savedNotes) : [];
+        if (savedNotes) {
+            const parsed = JSON.parse(savedNotes);
+            notes = Array.isArray(parsed) ? parsed : [];
+        } else {
+            notes = [];
+        }
+
     } catch (e) {
         console.error('State load failed, resetting to defaults:', e);
         categories = DEFAULT_CATEGORIES.split(',');

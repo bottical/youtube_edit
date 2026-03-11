@@ -367,11 +367,51 @@ tr:hover {
     }
 
     .card {
-        padding: 16px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .card h2 {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    #player-section h2 {
+        margin-bottom: 8px;
+    }
+
+    .form-group {
+        margin-bottom: 8px;
+    }
+
+    .form-group label {
+        margin-bottom: 3px;
+        font-size: 0.8rem;
     }
 
     .form-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .form-row label {
+        font-size: 0.75rem;
+    }
+
+    .form-row select {
+        padding: 6px 8px;
+        font-size: 0.85rem;
+    }
+
+    .btn {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+
+    .current-time-display {
+        margin-top: 8px;
+        padding: 6px;
+        font-size: 1.05rem;
     }
 
     .section-header {
@@ -402,12 +442,12 @@ tr:hover {
     }
 
     .button-group {
-        flex-direction: column;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
     }
 
-    .csv-actions .btn {
+    .button-group .btn {
         flex: 1;
-        padding: 8px 12px;
-        font-size: 0.8rem;
     }
 }
