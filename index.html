@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube動画編集指示ツール</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>YouTube動画編集指示ツール</h1>
             <p class="subtitle">動画を停止した位置に対して編集指示を記録できます。</p>
+            <div id="global-message" class="message-area hidden"></div>
         </header>
 
         <main>
@@ -18,7 +21,8 @@
             <section class="card" id="url-section">
                 <h2>動画の読み込み</h2>
                 <div class="input-group">
-                    <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..." aria-label="YouTube URL">
+                    <input type="text" id="youtube-url" placeholder="https://www.youtube.com/watch?v=..."
+                        aria-label="YouTube URL">
                     <button id="load-video-btn" class="btn btn-primary">読み込む</button>
                 </div>
                 <div id="url-error" class="error-msg hidden"></div>
@@ -121,7 +125,7 @@
         </main>
 
         <footer>
-            <p>&copy; 2024 YouTube動画編集指示ツール Special Utility</p>
+            <p>&copy; 2026 YouTube動画編集指示ツール Special Utility</p>
         </footer>
     </div>
 
@@ -129,4 +133,5 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

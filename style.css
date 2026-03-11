@@ -11,6 +11,10 @@
     --border-color: #e2e8f0;
     --error-bg: #fef2f2;
     --error-text: #991b1b;
+    --success-bg: #f0fdf4;
+    --success-text: #166534;
+    --info-bg: #eff6ff;
+    --info-text: #1e40af;
 }
 
 * {
@@ -147,6 +151,45 @@ textarea:focus {
     font-size: 0.9rem;
 }
 
+.message-area {
+    margin: 15px auto;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    max-width: 800px;
+    animation: slideDown 0.3s ease;
+}
+
+.message-area.error {
+    background: var(--error-bg);
+    color: var(--error-text);
+    border: 1px solid #fecaca;
+}
+
+.message-area.success {
+    background: var(--success-bg);
+    color: var(--success-text);
+    border: 1px solid #bbf7d0;
+}
+
+.message-area.info {
+    background: var(--info-bg);
+    color: var(--info-text);
+    border: 1px solid #bfdbfe;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .info-text {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -162,13 +205,15 @@ textarea:focus {
 #player-container {
     position: relative;
     width: 100%;
-    padding-top: 56.25%; /* 16:9 Aspect Ratio */
+    padding-top: 56.25%;
+    /* 16:9 Aspect Ratio */
     background: #000;
     border-radius: 8px;
     overflow: hidden;
 }
 
-#player, #player-placeholder {
+#player,
+#player-placeholder {
     position: absolute;
     top: 0;
     left: 0;
@@ -188,12 +233,13 @@ textarea:focus {
 
 .current-time-display {
     margin-top: 16px;
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-size: 1.25rem;
+    font-weight: 700;
     text-align: center;
     background: var(--bg-color);
-    padding: 10px;
+    padding: 12px;
     border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 
 #display-time-text {
@@ -255,7 +301,8 @@ table {
     min-width: 800px;
 }
 
-th, td {
+th,
+td {
     padding: 12px 16px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
@@ -272,11 +319,29 @@ tr:hover {
     cursor: pointer;
 }
 
-.col-no { width: 40px; }
-.col-time { width: 100px; font-family: monospace; }
-.col-cat { width: 120px; }
-.col-comment { min-width: 250px; white-space: pre-wrap; word-break: break-all; }
-.col-action { width: 80px; text-align: center; }
+.col-no {
+    width: 40px;
+}
+
+.col-time {
+    width: 100px;
+    font-family: monospace;
+}
+
+.col-cat {
+    width: 120px;
+}
+
+.col-comment {
+    min-width: 250px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.col-action {
+    width: 80px;
+    text-align: center;
+}
 
 .info-msg {
     padding: 40px;
@@ -296,7 +361,7 @@ tr:hover {
     .container {
         padding: 12px;
     }
-    
+
     header h1 {
         font-size: 1.5rem;
     }
@@ -316,7 +381,18 @@ tr:hover {
 
     .csv-actions {
         width: 100%;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .csv-actions .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    #delete-all-btn {
+        grid-column: span 2;
     }
 }
 
@@ -324,11 +400,11 @@ tr:hover {
     .input-group {
         flex-direction: column;
     }
-    
+
     .button-group {
         flex-direction: column;
     }
-    
+
     .csv-actions .btn {
         flex: 1;
         padding: 8px 12px;

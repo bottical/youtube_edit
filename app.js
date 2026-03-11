@@ -12,8 +12,8 @@ const STORAGE_KEYS = {
 const DEFAULT_CATEGORIES = 'カット,テロップ,BGM,SE,ズーム,強調,色調整,構成,テンポ,不要部分削除';
 
 // --- グローバル変数 ---
-let player;
-let isPlayerReady = false;
+let player = null;
+let isYouTubeApiReady = false;
 let notes = [];
 let categories = [];
 let currentVideoId = '';
@@ -38,7 +38,8 @@ const dom = {
     emptyMsg: document.getElementById('empty-message'),
     exportBtn: document.getElementById('export-csv-btn'),
     importInput: document.getElementById('import-csv-input'),
-    deleteAllBtn: document.getElementById('delete-all-btn')
+    deleteAllBtn: document.getElementById('delete-all-btn'),
+    globalMessage: document.getElementById('global-message')
 };
 
 // --- 初期化処理 ---
@@ -52,8 +53,9 @@ function init() {
 
 // YouTube API Ready 回答待ち
 window.onYouTubeIframeAPIReady = function () {
+    isYouTubeApiReady = true;
     console.log('YouTube API Ready');
-    // 初回ロード時にURLがあればプレイヤーを生成
+    // 初回ロード時にURLがあれば自動読み込み
     if (dom.urlInput.value) {
         loadVideo();
     }
@@ -95,14 +97,16 @@ function setupEventListeners() {
     dom.importInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) importCsv(file);
+        e.target.value = ''; // ファイル入力をリセット
     });
 
     // 全削除
     dom.deleteAllBtn.addEventListener('click', () => {
-        if (confirm('全ての指示を削除してもよろしいですか？')) {
+        if (confirm('全ての指示を削除してもよろしいですか？（現在の動画以外も含みます）')) {
             notes = [];
             saveState();
             renderNotesTable();
+            showMessage('すべての指示を削除しました', 'success');
         }
     });
 }
@@ -117,6 +121,11 @@ function extractVideoId(url) {
 }
 
 function loadVideo() {
+    if (!isYouTubeApiReady) {
+        showMessage('YouTube APIの読み込み中です。少々お待ちください。', 'info');
+        return;
+    }
+
     const url = dom.urlInput.value.trim();
     const videoId = extractVideoId(url);
 
@@ -131,39 +140,47 @@ function loadVideo() {
 
     if (!player) {
         // プレイヤー初期生成
-        player = new YT.Player('player', {
-            height: '100%',
-            width: '100%',
-            videoId: videoId,
-            host: 'https://www.youtube.com', // エラー153対策
-            playerVars: {
-                'origin': window.location.origin === 'null' ? '*' : window.location.origin, // file:// の場合は '*'
-                'enablejsapi': 1,
-                'widget_referrer': window.location.href
-            },
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange,
-                'onError': (e) => console.error('YouTube Player Error:', e.data)
-            }
-        });
+        try {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                host: 'https://www.youtube.com',
+                playerVars: {
+                    'origin': location.origin === 'null' ? '*' : location.origin,
+                    'enablejsapi': 1,
+                    'autoplay': 0
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': (e) => {
+                        console.error('YouTube Player Error:', e.data);
+                        showError('動画の読み込みに失敗しました。');
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Player creation error:', err);
+            showError('プレイヤーの生成に失敗しました。ページを更新してください。');
+        }
     } else {
-        player.loadVideoById({
-            videoId: videoId
-        });
+        player.loadVideoById({ videoId: videoId });
     }
 
     document.getElementById('player-placeholder').classList.add('hidden');
+
+    // 動画が変わったので一覧を再描画（フィルタがかかる）
+    renderNotesTable();
 }
 
 function onPlayerReady(event) {
-    isPlayerReady = true;
     console.log('Player initialized');
 }
 
 function onPlayerStateChange(event) {
     // PAUSED (2) または ENDED (0) 時に時間を取得
-    if (event.data === YT.PlayerState.PAUSED) {
+    if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
         const currentTime = Math.floor(player.getCurrentTime());
         updateTimeDisplay(currentTime);
     }
@@ -178,6 +195,11 @@ function updateTimeDisplay(sec) {
 
 // --- データ管理 ---
 
+function generateNoteId() {
+    // 衝突回避を強化
+    return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+}
+
 function updateCategories(rawText) {
     const list = rawText.split(',')
         .map(s => s.trim())
@@ -189,15 +211,29 @@ function updateCategories(rawText) {
 
     saveState();
     renderCategories();
+    showMessage('カテゴリを更新しました', 'success');
 }
 
 function renderCategories() {
-    const options = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-    const emptyOption = '<option value="">(なし)</option>';
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = '(なし)';
 
-    dom.cat1.innerHTML = options || emptyOption;
-    dom.cat2.innerHTML = emptyOption + options;
-    dom.cat3.innerHTML = emptyOption + options;
+    const createOptions = (target) => {
+        target.innerHTML = '';
+        target.appendChild(emptyOption.cloneNode(true));
+        categories.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            target.appendChild(opt);
+        });
+    };
+
+    // 全て空選択を許可
+    createOptions(dom.cat1);
+    createOptions(dom.cat2);
+    createOptions(dom.cat3);
 }
 
 function handleAddNote() {
@@ -206,17 +242,22 @@ function handleAddNote() {
     const comment = dom.comment.value.trim();
 
     if (timeSec === null) {
-        alert('時間の形式が正しくありません (hh:mm:ss または 秒数)');
+        showMessage('時間の形式が正しくありません (hh:mm:ss または 秒数)', 'error');
         return;
     }
 
     if (!comment) {
-        alert('コメントを入力してください');
+        showMessage('コメントを入力してください', 'error');
+        return;
+    }
+
+    if (!currentVideoId) {
+        showMessage('まず動画を読み込んでください', 'error');
         return;
     }
 
     const note = {
-        id: Date.now().toString(),
+        id: generateNoteId(),
         timeSec: timeSec,
         timeText: formatTime(timeSec),
         category1: dom.cat1.value,
@@ -232,112 +273,136 @@ function handleAddNote() {
     saveState();
     renderNotesTable();
 
-    // 入力クリア (時間は保持、コメントのみクリアしフォーカス)
+    // 入力クリア (コメントのみ)
     dom.comment.value = '';
     dom.comment.focus();
+    showMessage('指示を追加しました', 'success');
 }
 
 function deleteNote(id) {
     notes = notes.filter(n => n.id !== id);
     saveState();
     renderNotesTable();
+    showMessage('指示を削除しました', 'success');
 }
 
 function renderNotesTable() {
-    if (notes.length === 0) {
-        dom.notesList.innerHTML = '';
+    // 現在の動画IDに紐づく指示のみ表示
+    const filteredNotes = notes.filter(n => n.videoId === currentVideoId);
+
+    // 既存リストのクリア
+    dom.notesList.innerHTML = '';
+
+    if (filteredNotes.length === 0) {
         dom.emptyMsg.classList.remove('hidden');
+        dom.emptyMsg.textContent = currentVideoId ? 'この動画には指示がまだありません。' : '動画を読み込むと、その動画への指示を表示します。';
         return;
     }
 
     dom.emptyMsg.classList.add('hidden');
-    dom.notesList.innerHTML = notes.map((n, index) => `
-        <tr onclick="seekToNote('${n.id}')">
-            <td>${index + 1}</td>
-            <td>${n.timeText}</td>
-            <td>${n.category1}</td>
-            <td>${n.category2}</td>
-            <td>${n.category3}</td>
-            <td>${n.comment}</td>
-            <td>
-                <button class="btn btn-danger" onclick="event.stopPropagation(); deleteNote('${n.id}')">削除</button>
-            </td>
-        </tr>
-    `).join('');
+
+    // createElementベースで描画 (XSS対策)
+    filteredNotes.forEach((n, index) => {
+        const tr = document.createElement('tr');
+        tr.addEventListener('click', () => seekToNote(n.id));
+
+        const createTd = (text, className = '') => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            if (className) td.className = className;
+            return td;
+        };
+
+        tr.appendChild(createTd(index + 1, 'col-no'));
+        tr.appendChild(createTd(n.timeText, 'col-time'));
+        tr.appendChild(createTd(n.category1, 'col-cat'));
+        tr.appendChild(createTd(n.category2, 'col-cat'));
+        tr.appendChild(createTd(n.category3, 'col-cat'));
+        tr.appendChild(createTd(n.comment, 'col-comment'));
+
+        const actionTd = document.createElement('td');
+        actionTd.className = 'col-action';
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '削除';
+        deleteBtn.className = 'btn btn-danger btn-sm';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('この指示を削除しますか？')) {
+                deleteNote(n.id);
+            }
+        });
+        actionTd.appendChild(deleteBtn);
+        tr.appendChild(actionTd);
+
+        dom.notesList.appendChild(tr);
+    });
 }
 
-window.seekToNote = function (id) {
+function seekToNote(id) {
     const note = notes.find(n => n.id === id);
-    if (note && player && isPlayerReady) {
+    if (note && player && player.seekTo) {
         player.seekTo(note.timeSec, true);
-        player.pauseVideo(); // シーク後に停止状態で確認しやすくする
-    } else if (!isPlayerReady) {
-        alert('プレイヤーが準備できていません。動画を読み込んでください。');
+        player.pauseVideo();
+    } else {
+        console.warn('Seek failed: player not ready or note not found');
     }
-};
+}
 
 function clearForm() {
     dom.comment.value = '';
     dom.inputTime.value = dom.displayTimeText.textContent;
+    showMessage('入力をクリアしました', 'info');
 }
 
 // --- CSV操作 ---
 
 function exportCsv() {
     if (notes.length === 0) {
-        alert('出力するデータがありません。');
+        showMessage('出力するデータがありません。', 'error');
         return;
     }
 
     const headers = ['timeSec', 'timeText', 'category1', 'category2', 'category3', 'comment', 'videoId', 'videoUrl'];
-    const rows = notes.map(n => [
-        n.timeSec,
-        n.timeText,
-        n.category1,
-        n.category2,
-        n.category3,
-        n.comment,
-        n.videoId,
-        n.videoUrl
-    ]);
 
     let csvContent = headers.join(',') + '\n';
-    rows.forEach(row => {
-        const escapedRow = row.map(value => {
+    notes.forEach(n => {
+        const row = headers.map(h => {
+            const value = n[h];
             const str = (value === null || value === undefined) ? '' : String(value);
-            // ダブルクォート、カンマ、改行が含まれる場合はエスケープ
-            if (str.includes('"') || str.includes(',') || str.includes('\n')) {
+            // エスケープ
+            if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
                 return `"${str.replace(/"/g, '""')}"`;
             }
             return str;
         });
-        csvContent += escapedRow.join(',') + '\n';
+        csvContent += row.join(',') + '\n';
     });
 
-    // UTF-8 BOM付き
+    // UTF-8 BOM
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
     const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement('a');
-    const now = new Date();
-    const timestamp = now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') + '_' +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0') +
-        String(now.getSeconds()).padStart(2, '0');
 
-    link.setAttribute('href', url);
-    link.setAttribute('download', `youtube_edit_notes_${timestamp}.csv`);
-    link.style.visibility = 'hidden';
+    const now = new Date();
+    const ts = now.toISOString().replace(/[:T]/g, '').slice(0, 14);
+
+    link.href = url;
+    link.download = `youtube_edit_notes_${ts}.csv`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+
+    // クリーンアップ
+    setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, 100);
+
+    showMessage('CSVをダウンロードしました', 'success');
 }
 
 function importCsv(file) {
-    if (!confirm('既存のデータを上書きしてCSVを読み込みますか？')) return;
+    if (!confirm('全ての既存データを上書きしてCSVを読み込みますか？')) return;
 
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -346,26 +411,32 @@ function importCsv(file) {
             const lines = parseCsv(text);
             if (lines.length < 2) throw new Error('データがありません');
 
-            const headers = lines[0];
-            const dataRows = lines.slice(1);
+            const headers = lines[0].map(h => h.trim());
 
+            // 必須ヘッダの検証
+            const required = ['timeSec', 'timeText', 'comment'];
+            const missing = required.filter(r => !headers.includes(r));
+            if (missing.length > 0) {
+                throw new Error(`必須列が不足しています: ${missing.join(', ')}`);
+            }
+
+            const dataRows = lines.slice(1);
             const importedNotes = dataRows.map(row => {
-                const note = {};
-                headers.forEach((header, i) => {
-                    note[header.trim()] = row[i];
+                const item = {};
+                headers.forEach((h, i) => {
+                    item[h] = row[i];
                 });
 
-                // 必須フィールドの補完と型変換
                 return {
-                    id: Date.now().toString() + Math.random(),
-                    timeSec: parseInt(note.timeSec) || 0,
-                    timeText: note.timeText || '00:00:00',
-                    category1: note.category1 || '',
-                    category2: note.category2 || '',
-                    category3: note.category3 || '',
-                    comment: note.comment || '',
-                    videoId: note.videoId || '',
-                    videoUrl: note.videoUrl || '',
+                    id: generateNoteId(),
+                    timeSec: parseInt(item.timeSec) || 0,
+                    timeText: item.timeText || '00:00:00',
+                    category1: item.category1 || '',
+                    category2: item.category2 || '',
+                    category3: item.category3 || '',
+                    comment: item.comment || '',
+                    videoId: item.videoId || '',
+                    videoUrl: item.videoUrl || '',
                     createdAt: new Date().toISOString()
                 };
             });
@@ -373,16 +444,15 @@ function importCsv(file) {
             notes = importedNotes;
             saveState();
             renderNotesTable();
-            alert(`${notes.length}件の指示を読み込みました。`);
+            showMessage(`${notes.length}件の指示を読み込みました`, 'success');
         } catch (err) {
-            alert('CSVのパースに失敗しました。形式を確認してください。');
+            showMessage('CSVの読み込みに失敗しました: ' + err.message, 'error');
             console.error(err);
         }
     };
     reader.readAsText(file);
 }
 
-// 簡易CSVパース (引用符対応)
 function parseCsv(text) {
     const result = [];
     let row = [];
@@ -431,47 +501,44 @@ function parseCsv(text) {
 // --- ユーティリティ ---
 
 function formatTime(sec) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
+    const safeSec = Math.max(0, Math.floor(sec));
+    const h = Math.floor(safeSec / 3600);
+    const m = Math.floor((safeSec % 3600) / 60);
+    const s = safeSec % 60;
     return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
 }
 
 function parseTimeToSeconds(text) {
     if (!text) return null;
 
-    // hh:mm:ss または mm:ss
     if (text.includes(':')) {
         const parts = text.split(':').map(Number);
         if (parts.some(isNaN)) return null;
 
+        // 分・秒の範囲チェック (0-59)
         if (parts.length === 3) {
+            if (parts[1] >= 60 || parts[2] >= 60) return null;
             return parts[0] * 3600 + parts[1] * 60 + parts[2];
         } else if (parts.length === 2) {
+            if (parts[1] >= 60) return null;
             return parts[0] * 60 + parts[1];
         }
     }
 
-    // 単純な数値
     const sec = Number(text);
-    return isNaN(sec) ? null : sec;
+    return (isNaN(sec) || sec < 0) ? null : Math.floor(sec);
 }
 
-function saveState() {
-    localStorage.setItem(STORAGE_KEYS.videoUrl, dom.urlInput.value);
-    localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(categories));
-    localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(notes));
-}
+function showMessage(msg, type = 'info') {
+    dom.globalMessage.textContent = msg;
+    dom.globalMessage.className = `message-area ${type}`;
+    dom.globalMessage.classList.remove('hidden');
 
-function loadState() {
-    dom.urlInput.value = localStorage.getItem(STORAGE_KEYS.videoUrl) || '';
-
-    const savedCats = localStorage.getItem(STORAGE_KEYS.categories);
-    categories = savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES.split(',');
-    dom.categoryInput.value = categories.join(',');
-
-    const savedNotes = localStorage.getItem(STORAGE_KEYS.notes);
-    notes = savedNotes ? JSON.parse(savedNotes) : [];
+    // 5秒後に消す
+    if (window.messageTimer) clearTimeout(window.messageTimer);
+    window.messageTimer = setTimeout(() => {
+        dom.globalMessage.classList.add('hidden');
+    }, 5000);
 }
 
 function showError(msg) {
@@ -481,6 +548,33 @@ function showError(msg) {
 
 function hideError() {
     dom.urlError.classList.add('hidden');
+}
+
+function saveState() {
+    try {
+        localStorage.setItem(STORAGE_KEYS.videoUrl, dom.urlInput.value);
+        localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(categories));
+        localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(notes));
+    } catch (e) {
+        console.error('Storage save failed:', e);
+    }
+}
+
+function loadState() {
+    try {
+        dom.urlInput.value = localStorage.getItem(STORAGE_KEYS.videoUrl) || '';
+
+        const savedCats = localStorage.getItem(STORAGE_KEYS.categories);
+        categories = savedCats ? JSON.parse(savedCats) : DEFAULT_CATEGORIES.split(',');
+        dom.categoryInput.value = categories.join(',');
+
+        const savedNotes = localStorage.getItem(STORAGE_KEYS.notes);
+        notes = (savedNotes && Array.isArray(JSON.parse(savedNotes))) ? JSON.parse(savedNotes) : [];
+    } catch (e) {
+        console.error('State load failed, resetting to defaults:', e);
+        categories = DEFAULT_CATEGORIES.split(',');
+        notes = [];
+    }
 }
 
 // 実行
