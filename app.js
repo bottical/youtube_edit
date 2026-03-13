@@ -9,7 +9,7 @@ const STORAGE_KEYS = {
     notes: 'yt-edit-tool.notes'
 };
 
-const DEFAULT_CATEGORIES = 'カット, テロップ, BGM, SE, 画像挿入, ズーム, 強調, 色調整, 構成, テンポ';
+const DEFAULT_CATEGORIES = 'カット, テロップ, BGM, SE, 素材挿入, ズーム, 強調, 色調整, 構成, テンポ';
 
 // --- グローバル変数 ---
 let player = null;
@@ -608,4 +608,5 @@ function loadState() {
 
 // 実行
 init();
+
 
