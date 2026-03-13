@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube動画編集指示ツール</title>
+    <title>YouTube外注ディレクションキット</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div class="container">
         <header>
-            <h1>YouTube動画編集指示ツール</h1>
+            <h1>YouTube外注ディレクションキット</h1>
             <p class="subtitle">動画を停止した位置に対して編集指示を記録できます。</p>
             <div id="global-message" class="message-area hidden"></div>
         </header>
@@ -32,7 +32,7 @@
             <section class="card" id="category-section">
                 <h2>カテゴリ設定</h2>
                 <div class="input-group">
-                    <input type="text" id="category-tags" placeholder="カット,テロップ,BGM,SE..." aria-label="カテゴリ候補">
+                    <input type="text" id="category-tags" placeholder="カテゴリ例）カット, テロップ, BGM, SE, 画像挿入, ズーム, 強調, 色調整, 構成, テンポ" aria-label="カテゴリ候補">
                     <button id="update-categories-btn" class="btn">カテゴリ更新</button>
                 </div>
                 <p class="info-text">カンマ区切りで入力してください。</p>
@@ -125,7 +125,7 @@
         </main>
 
         <footer>
-            <p>&copy; 2026 YouTube動画編集指示ツール Special Utility</p>
+            <p>&copy; 2026 YouTube外注ディレクションキット Special Utility</p>
         </footer>
     </div>
 
@@ -133,5 +133,6 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="app.js"></script>
 </body>
+
 
 </html>
